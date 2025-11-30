@@ -1,5 +1,6 @@
 package com.example.nasaapi
 
+import android.content.ContentValues.TAG
 import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
 
 private const val TAG = "PhotoGalleryViewModel"
 
@@ -24,40 +26,60 @@ open class PhotoGalleryViewModel : ViewModel() {
         get() = _galleryItems.asStateFlow()
 
     init {
-        loadPhotos()
-    }
-
-    private fun loadPhotos() {
         viewModelScope.launch {
             try {
-                val items = photoRepository.fetchPhotos(count = 50)
+                val items = photoRepository.fetchPhotos()
                 Log.d(TAG, "Initial Items received: $items")
-                _galleryItems.value = items
+
+                if (items.isNotEmpty()) {
+                    _galleryItems.value = items
+                } else {
+                    refreshData()
+                }
+
             } catch (ex: Exception) {
-                Log.e(TAG, "Failed to fetch gallery items", ex)
+                Log.e(TAG, "Failed to fetch Initial gallery items", ex)
+                refreshData()
             }
         }
     }
 
-    fun getStuff(progressBar: ProgressBar) {
+    fun getStuff(progressBar: ProgressBar?) {
         viewModelScope.launch {
             try {
-                val items = photoRepository.fetchPhotos(count = 50)
-                Log.d(TAG, "Refreshed Items received: $items")
+                progressBar?.visibility = View.GONE
+                val items = photoRepository.fetchPhotos()
+                Log.d(TAG, " Refreshed Items received: $items")
                 _galleryItems.value = items
-                progressBar.visibility = View.GONE
+
             } catch (ex: Exception) {
-                Log.e(TAG, "Failed to fetch gallery items", ex)
-                progressBar.visibility = View.GONE
+                Log.e(TAG, "Failed to fetch Refresh gallery items", ex)
             }
         }
     }
 
+    fun refreshData() {
+        viewModelScope.launch {
+            try {
+                val items = photoRepository.fetchPhotos()
+                Log.d(TAG, " Refreshed Items received: $items")
+
+                if (items.isNotEmpty()) {
+                    _galleryItems.value = items
+                }
+            } catch (ex: Exception) {
+                Log.e(TAG, "Failed to fetch Refresh gallery items", ex)
+            }
+        }
+    }
+
+    fun setGalleryItems(dummyData: List<ArtworkItem>) {
+        _galleryItems.value = dummyData
+    }
 }
 
 class PhotoGalleryViewModelFactory : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>):
-            T {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return PhotoGalleryViewModel() as T
     }
 }
